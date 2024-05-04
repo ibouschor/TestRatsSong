@@ -1,0 +1,46 @@
+local dfpwm = require("cc.audio.dfpwm")
+local speaker = peripheral.find("speaker")
+local decoder = dfpwm.make_decoder()
+
+print("Insert the direct link to your DFPWM file:")
+local lien = read()
+
+-- Ensure that the HTTP API is enabled
+if not http then
+    print("HTTP API is not enabled. Please enable it in your computer's config.")
+    return
+end
+
+-- Attempt to download the DFPWM file from the provided link
+local handle = http.get(lien)
+if not handle then
+    print("Failed to download the file from the provided link.")
+    return
+end
+
+-- Read and play the audio
+local buffer = ""
+repeat
+    local chunk = handle.read(16 * 1024) -- Read 16KB chunks
+    if chunk then
+        buffer = buffer .. chunk
+        while true do
+            local audioData = decoder(buffer)
+            if audioData then
+                if speaker.playAudio(audioData) then
+                    buffer = "" -- Clear the buffer if the audio was successfully played
+                    break
+                else
+                    os.pullEvent("speaker_audio_empty")
+                end
+            else
+                break
+            end
+        end
+    else
+        break
+    end
+until not chunk
+
+-- Close the file handle
+handle.close()
